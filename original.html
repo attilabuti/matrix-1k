@@ -1,0 +1,183 @@
+<script>
+    document.body = document.createElement("body");
+    document.body.style.overflow = "hidden";
+    document.body.style.margin = 0;
+    document.body.bgColor = "#000";
+
+    const canvas = document.createElement("canvas");
+    document.body.appendChild(canvas);
+
+    const ctx = canvas.getContext("2d");
+
+    const isFirefox = typeof InstallTrigger != "undefined";
+
+    var width, height, fontSize, charWidth, charHeight, cols, rows, strands;
+    window.onresize = _ => {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+
+        if (width < 990 && height > width) {
+            fontSize = 50;
+        } else {
+            fontSize = 30;
+        }
+
+        charWidth = fontSize - 9;
+        charHeight = fontSize - 5;
+
+        cols = Math.floor(width / charWidth);
+        rows = Math.floor(height / charHeight);
+
+        strands = [];
+
+        ctx.font = `${fontSize}px monospace`;
+        ctx.textBaseline = "top";
+    };
+
+    window.onresize();
+
+    const randomInt = (min, max) => {
+        return Math.floor(Math.random() * (max - min + 1) + min);
+    };
+
+    const notMirroredChars = [...`01347Z`];
+    const chars = [...`2589<>:"=.*+-╌_|¦` + String.fromCharCode(...[...Array(45)].map((_, i) => i + 65393)), ...notMirroredChars];
+
+    const randomChar = _ => {
+        let fixed = false;
+        if (Math.random() > 0.8) {
+            fixed = true;
+        }
+
+        return [
+            chars[randomInt(0, chars.length - 1)],
+            0,     // Counter
+            fixed, // Fixed
+            1,     // Head
+            1      // Alpha
+        ];
+    };
+
+    const update = _ => {
+        strands.map((strand, x) => {
+            if (strand) {
+                if (strand[2] !== undefined) {
+                    var isEmpty = true;
+                    var fadeOutCounter = 1;
+
+                    // char[0] - Char
+                    // char[1] - Counter
+                    // char[2] - Fixed
+                    // char[3] - Head
+                    // char[4] - Alpha
+                    strand[2].map((char, y) => {
+                        if (char !== undefined) {
+                            isEmpty = false;
+
+                            if (char[4] > 0.1) {
+                                if (fadeOutCounter < strand[3]) {
+                                    char[4] -= 1 / strand[3];
+                                    fadeOutCounter++;
+                                }
+
+                                char[3] = false;
+
+                                if (!char[2] && char[1] > 4 && Math.random() > 0.9) {
+                                    char[0] = randomChar()[0];
+                                    char[1] = 0;
+                                } else {
+                                    char[1]++;
+                                }
+                            } else {
+                                char = undefined;
+                            }
+
+                            strand[2][y] = char;
+                        }
+                    });
+                }
+
+                if (strand[2].length != strand[1]) {
+                    if (Math.random() > 0.9) {
+                        strand[2].push("");
+                    } else {
+                        strand[2].push(randomChar());
+                    }
+                } else {
+                    if (isEmpty) {
+                        strand = undefined;
+                    }
+                }
+
+                strands[x] = strand;
+            }
+        });
+    };
+
+    const draw = _ => {
+        ctx.clearRect(0, 0, width, height);
+
+        strands.map((strand, x) => {
+            if (strand !== undefined) {
+                strand[2].map((char, y) => {
+                    if (char) {
+                        if (!isFirefox) {
+                            ctx.shadowColor = `rgba(0, 254, 7, ${char[4]})`;
+                            ctx.shadowBlur = 9;
+                        }
+
+                        if (char[3]) {
+                            ctx.fillStyle = "#fff";
+                        } else {
+                            ctx.fillStyle = `rgba(0, 254, 7, ${char[4]})`;
+                        }
+
+                        if (notMirroredChars.includes(char[0])) {
+                            ctx.fillText(char[0], x * charWidth - fontSize / 2, (strand[0] + y) * charHeight);
+                        } else {
+                            ctx.scale(-1, 1);
+                            ctx.fillText(char[0], -x * charWidth, (strand[0] + y) * charHeight);
+                            ctx.scale(-1, 1);
+                        }
+                    }
+                });
+            }
+        });
+    };
+
+    const animate = _ => {
+        for (let i = 0; i < 8; i++) {
+            let col = randomInt(0, cols);
+
+            if (strands[col] === undefined) {
+                let yStart, yEnd;
+
+                if (Math.random() > 0.9) {
+                    yStart = randomInt(0, rows / 7);
+                } else {
+                    yStart = 0;
+                }
+
+                if (Math.random() > 0.8) {
+                    yEnd = randomInt(rows / 2, rows);
+                } else {
+                    yEnd = rows;
+                }
+
+                strands[col] = [
+                    yStart,
+                    yEnd,
+                    [],
+                    randomInt(yEnd / 3, yEnd + yEnd / 1.2)
+                ];
+            }
+        }
+
+        update();
+        draw();
+
+        setTimeout(animate, 1000 / 30);
+    };
+
+    animate();
+</script>
